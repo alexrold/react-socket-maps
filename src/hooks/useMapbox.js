@@ -7,7 +7,6 @@ import { Subject } from 'rxjs';
 // Api Key
 mapboxgl.accessToken = 'pk.eyJ1IjoiYWxleHJvbGQiLCJhIjoiY2t1NWdnOTNqMDZhdjJ4cGFpMW01MGc2dSJ9.kvknkfDhd8P2AHilb27jgg';
 
-
 export const useMapbox = (puntoInicial) => {
 
     //referencia al div del mapa-
@@ -23,17 +22,16 @@ export const useMapbox = (puntoInicial) => {
     const movimientoMarcador = useRef(new Subject());
     const nuevoMarcador = useRef(new Subject());
 
-
     // Mapa y cords-
     const mapa = useRef();
     const [cords, setCords] = useState(puntoInicial);
 
     //agregar marcadores-
-    const agregarMarcador = useCallback((e) => {
+    const agregarMarcador = useCallback((e, id) => {
 
-        const { lng, lat } = e.lngLat;
+        const { lng, lat } = e.lngLat || e;
         const marker = new mapboxgl.Marker();
-        marker.id = v4(); // TODO: si el marcador ya tiene ID
+        marker.id = id ?? v4(); // si no viene el id lo genera-
 
         marker
             .setLngLat([lng, lat])
@@ -43,12 +41,14 @@ export const useMapbox = (puntoInicial) => {
         //asignar el obj a marcadores-
         marcadores.current[marker.id] = marker;
 
-        //TODO -Si marcador tiene un ID no emitir-
-        nuevoMarcador.current.next({
-            id: marker.id,
-            lng,
-            lat
-        });
+        // -Si marcador tiene un ID no emitir-
+        if (!id) {
+            nuevoMarcador.current.next({
+                id: marker.id,
+                lng,
+                lat
+            });
+        }
 
         //escuchar movimientos del marcador-
         marker.on('drag', ({ target }) => {
@@ -58,6 +58,11 @@ export const useMapbox = (puntoInicial) => {
             //Emitir los cambios del marcador- 
             movimientoMarcador.current.next({ id, lng, lat });
         });
+    }, []);
+
+    // actualizar posicion del marcador en el mapa
+    const actualizarPosicion = useCallback(({ id, lng, lat }) => {
+        marcadores.current[id].setLngLat([lng, lat]);
     }, []);
 
 
@@ -89,8 +94,8 @@ export const useMapbox = (puntoInicial) => {
         mapa.current?.on('click', agregarMarcador);
     }, [agregarMarcador]);
 
-
     return {
+        actualizarPosicion,
         agregarMarcador,
         cords,
         marcadores,

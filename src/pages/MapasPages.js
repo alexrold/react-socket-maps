@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useContext } from 'react';
+import { SocketContext } from '../context/SocketContext';
 import { useMapbox } from '../hooks/useMapbox';
 
 // initial Point map
@@ -9,23 +10,46 @@ const puntoInicial = {
 }
 
 export const MapasPages = () => {
-    const { setRef, cords, nuevoMarcador$, movimientoMarcador$ } = useMapbox(puntoInicial);
+    const { setRef, cords, nuevoMarcador$, movimientoMarcador$, agregarMarcador, actualizarPosicion } = useMapbox(puntoInicial);
+    const { socket } = useContext(SocketContext);
 
-    // Nuevo marcador-
+    //Escuchar marcadores existentes-
+    useEffect(() => {
+        socket.on('marcadores-activos', (marcadores) => {
+            for (const key of Object.keys(marcadores)) {
+                agregarMarcador(marcadores[key], key);
+            };
+        });
+    }, [socket, agregarMarcador]);
+
+    // Nuevo marcador emitir-
     useEffect(() => {
         nuevoMarcador$.subscribe(marcador => {
-            //TODO nuevo marcador emitir-
-            console.log(marcador);
+            //nuevo marcador emitir-
+            socket.emit('marcador-nuevo', marcador);
         });
-    }, [nuevoMarcador$]);
+    }, [socket, nuevoMarcador$]);
+
+    // Nuevo marcador escuchar-
+    useEffect(() => {
+        socket.on('marcador-nuevo', (marcador) => {
+            agregarMarcador(marcador, marcador.id);
+        });
+    }, [socket, agregarMarcador]);
 
     // movimiento marcador-
     useEffect(() => {
         movimientoMarcador$.subscribe(marcador => {
-            //TODO movimiento marcador emitir-
-            console.log(marcador);
+            // movimiento marcador emitir-
+            socket.emit('marcador-actualizado', marcador);
         });
-    }, [movimientoMarcador$]);
+    }, [socket, movimientoMarcador$]);
+
+    useEffect(() => {
+        socket.on('marcador-actializado', (marcador) => {
+            actualizarPosicion(marcador);
+        });
+    }, [socket, actualizarPosicion]);
 
     return (
         <>
